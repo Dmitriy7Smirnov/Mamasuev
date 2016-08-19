@@ -3,13 +3,15 @@ require "iuplua"
 require "w32"
 
 
-local ACCOUNT = "A901KS9"       
+--it's a comment
+
+local ACCOUNT = "A901KS9"
 local CLASS_CODE = "SPBFUT"
 local SEC_CODE = "RIU6"
 local PRICE_DELTA = 50          -- отступление от цены, для точного исполнения заявки
 local g_FORTS = 1               -- если скрипт играет на фортс, то эта константа равна 1 , для игры на акциях ее значение необходимо установить в 0
 local g_isRealOrder = 0         -- 1 если с реальными заявками, ноль без реальных заявок
- 
+
 local t = QTable:new()
 
 local g_RowIndex = 0
@@ -36,37 +38,37 @@ local OrderOperations = {
 
 function OnStop(stop_flag)
   t:delete()
-end 
+end
 
 local function beep(n)
   for i=1, n do
     w32.MessageBeep(w32.MB_OK)
     sleep(200)
   end
-end  
+end
 
-function addToMyTable() 
+function addToMyTable()
   table.sort(t_globalSupportLine)
   table.sort(t_globalResistanseLine)
-  
+
   for i=1, #t_globalSupportLine do
     local rows, _ = t:GetSize()
-    if (i>rows) then 
+    if (i>rows) then
       t:AddLine()
     end
     t:SetValue(i, "SupportLine", tostring(t_globalSupportLine[i]))
   end
-  
+
   for i=1, #t_globalResistanseLine do
     local rows, _ = t:GetSize()
-    if (i>rows) then 
+    if (i>rows) then
       t:AddLine()
     end
     t:SetValue(i, "ResistanseLine", tostring(t_globalResistanseLine[i]))
-  end 
+  end
 end
-  
-  
+
+
   function wasLineBreakdown(index, canTrade)
     if (not canTrade) then return false end
     local curTime = tostring(ds5:T(index).hour)..":"..tostring(ds5:T(index).min)
@@ -89,18 +91,18 @@ end
             if ((not g_isLong) and (not g_isShort)) then
               g_levelForClosePosition = g_CurrentLevel + 2*(g_CurrentLevel - g_theLowestCloseOfOneMinuteRedCandleInNewSesson)
               g_stoplossLevel = g_theLowestCloseOfOneMinuteRedCandleInNewSesson
-              if cPrice > g_levelForClosePosition then 
+              if cPrice > g_levelForClosePosition then
                 startNewSession(true)
                 showInformation(curTime, "NEW SESSION, UP LEVEL EXEEDED", tempg_CurrentLevel)
               else
-                if ((g_curOpenInterest ~= nil) and (g_curOpenInterest >= g_maxOpenInterest) and (g_curOpenInterest > -1)) then 
+                if ((g_curOpenInterest ~= nil) and (g_curOpenInterest >= g_maxOpenInterest) and (g_curOpenInterest > -1)) then
                   showInformation(curTime, "UP", g_CurrentLevel)
                 else
-                  g_canTrade = true 
+                  g_canTrade = true
                   showInformation(curTime, "UP, NO ORDER ", g_CurrentLevel)
                 end
                 TransactionSend(1, OrderOperations.Buy, 1, localPrice)
-                
+
                 startNewSession(false)
                 g_isLong = true
               end
@@ -111,8 +113,8 @@ end
               startNewSession(false)
               g_isLong = true
               showInformation(tostring(dt.hour)..":"..tostring(dt.min), "NEW SESSION, REVERSE POSITION, UP", tempg_CurrentLevel)
-            end 
-            return true 
+            end
+            return true
           end
         end
         return false
@@ -127,14 +129,14 @@ end
             if ((not g_isLong) and (not g_isShort)) then
               g_levelForClosePosition = g_CurrentLevel - 2*(g_theHighestCloseOfOneMinuteGreenCandleInNewSession - g_CurrentLevel)
               g_stoplossLevel = g_theHighestCloseOfOneMinuteGreenCandleInNewSession
-              if cPrice < g_levelForClosePosition then 
+              if cPrice < g_levelForClosePosition then
                 startNewSession(true)
                 showInformation(curTime, "NEW SESSION, DOWN LEVEL EXEEDED", tempg_CurrentLevel)
               else
-                if ((g_curOpenInterest ~= nil) and (g_curOpenInterest >= g_maxOpenInterest) and (g_curOpenInterest > -1)) then 
+                if ((g_curOpenInterest ~= nil) and (g_curOpenInterest >= g_maxOpenInterest) and (g_curOpenInterest > -1)) then
                   showInformation(curTime, "DOWN", g_CurrentLevel)
                 else
-                  g_canTrade = true 
+                  g_canTrade = true
                   showInformation(curTime, "DOWN, NO ORDER", g_CurrentLevel)
                 end
                 TransactionSend(1, OrderOperations.Sell, 1, localPrice)
@@ -148,19 +150,19 @@ end
               startNewSession(false)
               g_isShort = true
               showInformation(tostring(dt.hour)..":"..tostring(dt.min), "NEW SESSION, REVERSE POSITION, DOWN", tempg_CurrentLevel)
-            end 
-            return true 
+            end
+            return true
           end
         end
         return false
     end
-  end  
-  
+  end
+
  -- Функция постановки новой заявки
 function TransactionSend(trans_id, operation, quantity, price)
      if (g_isRealOrder == 0) then return end
-     if (not g_canTrade) then return end 
-     
+     if (not g_canTrade) then return end
+
      local trans_params = {
         ["TRANS_ID"] = tostring(trans_id);
         ["ACTION"] = "NEW_ORDER";
@@ -176,11 +178,11 @@ function TransactionSend(trans_id, operation, quantity, price)
 
     return sendTransaction(trans_params);
 end;
-  
+
   function startNewSession(allLevelsDelete)
-    --получим время 
+    --получим время
     dt = os.date("*t")
-    
+
     t_greenCandles1 = {}
     t_redCandles1 = {}
     t_supportLine1 = {}
@@ -201,47 +203,47 @@ end;
     g_CurrentLevel = 0
     g_isShort = false
     g_isLong = false
-    
+
     if (allLevelsDelete) then
       g_theHighestCloseOfOneMinuteGreenCandleInNewSession = -1
-      g_theLowestCloseOfOneMinuteRedCandleInNewSesson = 1000000 
+      g_theLowestCloseOfOneMinuteRedCandleInNewSesson = 1000000
       g_levelForClosePosition = -1
       g_stoplossLevel = -1
-      
+
       g_curOpenInterest = -1
       g_canTrade = false
     end
-    
+
     local rows, _ = t:GetSize()
     for i=1, rows do
       t:SetValue(i, "SupportLine", " ")
       t:SetValue(i, "ResistanseLine", " ")
     end
-  end  
-  
-  
+  end
+
+
   function showInformation(time, direction, level)
       g_RowIndex = g_RowIndex + 1
       local rows, _ = t:GetSize()
       while (g_RowIndex>rows) do
           t:AddLine()
-          rows, _ = t:GetSize()          
+          rows, _ = t:GetSize()
       end
       t:SetValue(g_RowIndex, "Time", time)
       t:SetValue(g_RowIndex, "Direction", direction)
       t:SetValue(g_RowIndex, "Level", tostring(level))
       message(direction.." "..SEC_CODE, 2)
-      beep(5) 
+      beep(5)
   end
-  
+
 
 function handleTheCandle1(index, canTrade)
       if ((ds:C(index) - ds:O(index))>0) then               --candle is green
             if (ds:C(index) > g_theHighestCloseOfOneMinuteGreenCandleInNewSession) then g_theHighestCloseOfOneMinuteGreenCandleInNewSession = ds:C(index) end
           --message(tostring(g_theHighestCloseOfOneMinuteGreenCandleInNewSession).."hiGreen", 1)
-          if t_greenCandles1[ds:C(index)] ~=1 then          --if candle is not in green candles array        
+          if t_greenCandles1[ds:C(index)] ~=1 then          --if candle is not in green candles array
             t_greenCandles1[ds:C(index)] = 1                --add this candle in green candles array
-          else                                              --else (if this candle already in green candles array) 
+          else                                              --else (if this candle already in green candles array)
             t_resistanseLine1[ds:C(index)] = 1              --add this candle as resistanseLine1
             checkGlobalResistanseLines(ds:C(index))
           end
@@ -258,14 +260,14 @@ function handleTheCandle1(index, canTrade)
 end
 
 function checkGlobalResistanseLines(close)
-    if ((t_resistanseLine1[close] == 1) and (t_resistanseLine5[close] == 1)) then                 --if 
+    if ((t_resistanseLine1[close] == 1) and (t_resistanseLine5[close] == 1)) then                 --if
       if  (t_globalResistanseLineND[close] ~= 1) then
           t_globalResistanseLineND[close] = 1
-          table.insert(t_globalResistanseLine, close) 
-          addToMyTable() 
+          table.insert(t_globalResistanseLine, close)
+          addToMyTable()
       end
     end
-end  
+end
 
 function checkGlobalSupportLines(close)
     if ((t_supportLine1[close] == 1) and (t_supportLine5[close] == 1)) then
@@ -273,9 +275,9 @@ function checkGlobalSupportLines(close)
           t_globalSupportLineND[close] = 1
           table.insert(t_globalSupportLine, close)
           addToMyTable()
-      end  
+      end
     end
-end  
+end
 
 function handleTheCandle5(index, canTrade)
     if ((ds5:C(index) - ds5:O(index))>=0) then                             --candle is green
@@ -291,12 +293,12 @@ function handleTheCandle5(index, canTrade)
             t_redCandles5[ds5:C(index)] = 1
         else
             t_supportLine5[ds5:C(index)] = 1
-            checkGlobalSupportLines(ds5:C(index)) 
+            checkGlobalSupportLines(ds5:C(index))
         end
     end
     _ = wasLineBreakdown(index, canTrade)
-end  
-    
+end
+
 
 function cb1(index)
     if (index == 1) then return end
@@ -314,23 +316,23 @@ function cb1(index)
       startNewSession(true)
       showInformation(tostring(dt.hour)..":"..tostring(dt.min), "NEW SESSION, CLOSE SHORT POSITION", ds:C(index))
     end
-    
+
     if ((i>dsSize) and isCandleInNewSesson1(i) and ((ds:C(i))~=nil) and ((ds:C(i)) ~= (ds:O(i)))) then
       dsSize = i
       --message(tostring(ds:T(i).day)..tostring(ds:T(i).hour)..tostring(ds:T(i).min).."Candle1", 1)
       handleTheCandle1(dsSize, true)
-    end  
+    end
 end
 
 
 function cb5(index)
     if (index == 1) then return end
-    local i = index - 1 
-    if ((i>dsSize5) and isCandleInNewSesson5(i) and ((ds5:C(i))~=nil)) then  
+    local i = index - 1
+    if ((i>dsSize5) and isCandleInNewSesson5(i) and ((ds5:C(i))~=nil)) then
       dsSize5 = i
       --message(tostring(ds5:T(i).day)..tostring(ds5:T(i).hour)..tostring(ds5:T(i).min).."Candle5", 1)
       handleTheCandle5(dsSize5, true)
-    end  
+    end
 end
 
 function isCandleInNewSesson1(i)
@@ -354,7 +356,7 @@ function isCandleInNewSesson1(i)
   if candleHour < newSessionHour then return false end
   if candleMin >= newSessionMin then return true end
   if candleMin < newSessionMin then return false end
-end 
+end
 
 function isCandleInNewSesson5(i)
   local newSessionYear = dt.year
@@ -377,13 +379,13 @@ function isCandleInNewSesson5(i)
   if candleHour < newSessionHour then return false end
   if candleMin >= newSessionMin then return true end
   if candleMin < newSessionMin then return false end
-end 
+end
 
 
 function OnConnected()
   newCalc()
 end
-  
+
 function newCalc()
   t:AddLine()
   isRun = true;
@@ -404,9 +406,9 @@ function newCalc()
   t_globalResistanseLineND = {}
 
   g_CurrentLevel = 0
-     
-  g_curOpenInterest = -1 
-    
+
+  g_curOpenInterest = -1
+
    --обработаем минутные свечи
   ds = CreateDataSource(CLASS_CODE, SEC_CODE, INTERVAL_M1);
   dsSize = ds:Size()-1;
@@ -415,9 +417,9 @@ function newCalc()
       handleTheCandle1(i, false)
     end
   end
-  
+
   ds:SetUpdateCallback(cb1);
-  
+
   --обработаем пятиминутные свечи
   ds5 = CreateDataSource(CLASS_CODE, SEC_CODE, INTERVAL_M5);
   dsSize5 = ds5:Size()-1;
@@ -426,19 +428,19 @@ function newCalc()
       handleTheCandle5(i, false)
     end
   end
-  
+
   ds5:SetUpdateCallback(cb5);
-  
-end  
-  
+
+end
+
 
 function main()
-  
-  --получим время 
+
+  --получим время
   dt = os.date("*t")
-  
-  --таблицa 
-  
+
+  --таблицa
+
   t:AddColumn("ResistanseLine", QTABLE_STRING_TYPE, 25)
   t:AddColumn("SupportLine", QTABLE_STRING_TYPE, 25)
   t:AddColumn("Time", QTABLE_STRING_TYPE, 25)
@@ -449,30 +451,30 @@ function main()
   t:SetCaption(SEC_CODE)
   t:SetPosition(0, 0, 500, 700)
   t:Show()
-  
-  
+
+
   newCalc()
-  
+
   showInformation(tostring(dt.hour)..":"..tostring(dt.min), "NEW SESSION, SCRIPT START", 0)
-  
+
   while isRun do
-    
-  --получим время 
+
+  --получим время
   dtForOpenInterest = os.date("*t")
-    
+
     sleep(1000);
-    
-    
+
+
     g_curOpenInterest = tonumber(getParamEx(CLASS_CODE, SEC_CODE, "NUMCONTRACTS").param_value)
-    if (dtForOpenInterest.hour < 10)  then 
+    if (dtForOpenInterest.hour < 10)  then
       g_curOpenInterest = -1
       g_maxOpenInterest = -1
     end
     if ((g_curOpenInterest ~= nil) and (g_curOpenInterest > g_maxOpenInterest) and (dtForOpenInterest.hour == 10) and (dtForOpenInterest.min < 15))  then
       g_maxOpenInterest = g_curOpenInterest
-    end  
+    end
     t:SetValue(1, "OpenInterest", tostring(g_curOpenInterest))
     t:SetValue(1, "MaxOpenInterest", tostring(g_maxOpenInterest))
-  
+
   end;
 end;
