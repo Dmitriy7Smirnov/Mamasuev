@@ -9,7 +9,8 @@ local SEC_CODE = "RIU6"
 local PRICE_DELTA = 50          -- отступление от цены, для точного исполнения заявки
 local g_FORTS = 1               -- если скрипт играет на фортс, то эта константа равна 1 , для игры на акциях ее значение необходимо установить в 0
 local g_isRealOrder = 0         -- 1 если с реальными заявками, ноль без реальных заявок
- 
+local g_TickVolumeMoreThan = 10 -- во сколько раз тиковый объем больше чем средний за день 
+
 local t = QTable:new()
 
 local g_RowIndex = 0
@@ -25,10 +26,9 @@ local g_bestPrice = -1
 local g_curOpenInterest = -1
 local g_maxOpenInterest = -1
 
-local g_prevVolume = -1
-local g_curVolume = -1
-local g_prevDeltaVolume = -1
-local g_curDeltaVolume = -1
+local g_TickVolume = 0
+local g_TickCntPerDay = 0
+local dtForOpenInterest = os.date("*t")
 
 local g_canTrade = false
 
@@ -303,6 +303,20 @@ function handleTheCandle5(index, canTrade)
     _ = wasLineBreakdown(index, canTrade)
 end  
     
+function cbTick(index)
+  if (index == 1) then return end
+  local i = index
+  if ((dtForOpenInterest.year == dsTick:T(i).year) and (dtForOpenInterest.month == dsTick:T(i).month) and (dtForOpenInterest.day == dsTick:T(i).day)) then
+      
+      if ((g_TickCntPerDay ~= 0) and (g_TickVolume ~= 0) and (math.floor(dsTick:V(i)*g_TickCntPerDay/g_TickVolume) >= g_TickVolumeMoreThan)) then
+        t:SetValue(1, "Volume", tostring(dsTick:V(i)).."    "..tostring(dsTick:T(i).hour..":"..tostring(dsTick:T(i).min)..":"..tostring(dsTick(dsTick:T(i).sec))))
+      end  
+      
+      g_TickVolume = g_TickVolume + dsTick:V(i)
+      g_TickCntPerDay = g_TickCntPerDay + 1
+    end
+end 
+
 
 function cb1(index)
     if (index == 1) then return end
@@ -338,10 +352,7 @@ function cb5(index)
       handleTheCandle5(dsSize5, true)
     end  
 end
-
-function cbTick(index)
-  t:SetValue(1, "Volume", tostring(dsTick:V(index)))
-end  
+ 
 
 function isCandleInNewSesson1(i)
   local newSessionYear = dt.year
@@ -416,10 +427,22 @@ function newCalc()
   g_CurrentLevel = 0
      
   g_curOpenInterest = -1 
+  
+  g_TickVolume = 0
+  g_TickCntPerDay = 0
+  dtForOpenInterest = os.date("*t")
     
    
-   --обработаем минутные свечи
-  dsTick = CreateDataSource(CLASS_CODE, SEC_CODE, INTERVAL_TICK); 
+   --обработаем тики для получения объема
+  dsTick = CreateDataSource(CLASS_CODE, SEC_CODE, INTERVAL_TICK)
+  
+  dsTickSize = dsTick:Size()
+  for i=1, dsTickSize do
+    if ((dtForOpenInterest.year == dsTick:T(i).year) and (dtForOpenInterest.month == dsTick:T(i).month) and (dtForOpenInterest.day == dsTick:T(i).day)) then
+      g_TickVolume = g_TickVolume + dsTick:V(i)
+      g_TickCntPerDay = g_TickCntPerDay + 1
+    end
+  end  
   
   dsTick:SetUpdateCallback(cbTick)
     
@@ -481,10 +504,6 @@ function main()
     
     
     g_curOpenInterest = tonumber(getParamEx(CLASS_CODE, SEC_CODE, "NUMCONTRACTS").param_value)
-    g_prevVolume = g_curVolume
-    g_curVolume = tonumber(getParamEx(CLASS_CODE, SEC_CODE, "VALTODAY").param_value)
-    g_prevDeltaVolume = g_curDeltaVolume
-    if (g_curVolume ~= g_prevVolume) then g_curDeltaVolume = g_curVolume - g_prevVolume end
     if (dtForOpenInterest.hour < 10)  then 
       g_curOpenInterest = -1
       g_maxOpenInterest = -1
@@ -494,8 +513,6 @@ function main()
     end  
     t:SetValue(1, "OpenInterest", tostring(g_curOpenInterest))
     t:SetValue(1, "MaxOpenInterest", tostring(g_maxOpenInterest))
-    if (g_prevDeltaVolume ~= -1 and g_curDeltaVolume ~= -1 and g_prevVolume ~= -1 and g_curVolume ~= -1 and math.floor(g_curDeltaVolume/g_prevDeltaVolume) >= 7) then
-    t:SetValue(1, "Volume", tostring(math.floor(g_curDeltaVolume/g_prevDeltaVolume)).."            "..dtForOpenInterest.hour..":"..dtForOpenInterest.min ) end
   
-  end;
-end;
+  end
+end
