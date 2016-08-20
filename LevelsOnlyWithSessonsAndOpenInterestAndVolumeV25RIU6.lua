@@ -28,6 +28,7 @@ local g_maxOpenInterest = -1
 
 local g_TickVolume = 0
 local g_TickCntPerDay = 0
+local g_TickVolumeMaxCnt = 0
 local dtForOpenInterest = os.date("*t")
 
 local g_canTrade = false
@@ -304,12 +305,20 @@ function handleTheCandle5(index, canTrade)
 end  
     
 function cbTick(index)
-  if (index == 1) then return end
   local i = index
   if ((dtForOpenInterest.year == dsTick:T(i).year) and (dtForOpenInterest.month == dsTick:T(i).month) and (dtForOpenInterest.day == dsTick:T(i).day)) then
       
       if ((g_TickCntPerDay ~= 0) and (g_TickVolume ~= 0) and (math.floor(dsTick:V(i)*g_TickCntPerDay/g_TickVolume) >= g_TickVolumeMoreThan)) then
-        t:SetValue(1, "Volume", tostring(dsTick:V(i)).."    "..tostring(dsTick:T(i).hour..":"..tostring(dsTick:T(i).min)..":"..tostring(dsTick(dsTick:T(i).sec))))
+        
+        g_TickVolumeMaxCnt = g_TickVolumeMaxCnt + 1
+        local rows, _ = t:GetSize()
+        if (g_TickVolumeMaxCnt>rows) then 
+          t:AddLine()
+        end
+       
+        
+        t:SetValue(g_TickVolumeMaxCnt, "VolumeMax", tostring(dsTick:V(i)).."    "..tostring(dsTick:T(i).hour..":"..tostring(dsTick:T(i).min)..":"..tostring(        dsTick(dsTick:T(i).sec))))
+        t:SetValue(g_TickVolumeMaxCnt, "VolumeAver", tostring(math.floor(g_TickVolume/g_TickCntPerDay)))
       end  
       
       g_TickVolume = g_TickVolume + dsTick:V(i)
@@ -430,6 +439,7 @@ function newCalc()
   
   g_TickVolume = 0
   g_TickCntPerDay = 0
+  g_TickVolumeMaxCnt = 0
   dtForOpenInterest = os.date("*t")
     
    
@@ -485,7 +495,8 @@ function main()
   t:AddColumn("Level", QTABLE_STRING_TYPE, 25)
   t:AddColumn("OpenInterest", QTABLE_STRING_TYPE, 25)
   t:AddColumn("MaxOpenInterest", QTABLE_STRING_TYPE, 25)
-  t:AddColumn("Volume", QTABLE_STRING_TYPE, 25)
+  t:AddColumn("VolumeMax", QTABLE_STRING_TYPE, 25)
+  t:AddColumn("VolumeAver", QTABLE_STRING_TYPE, 25)
   t:SetCaption(SEC_CODE)
   t:SetPosition(0, 0, 500, 700)
   t:Show()
