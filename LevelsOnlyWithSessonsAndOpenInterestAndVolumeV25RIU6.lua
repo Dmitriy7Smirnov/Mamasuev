@@ -317,8 +317,9 @@ function cbTick(index)
         end
        
         
-        t:SetValue(g_TickVolumeMaxCnt, "VolumeMax", tostring(dsTick:V(i)).."    "..tostring(dsTick:T(i).hour..":"..tostring(dsTick:T(i).min)..":"..tostring(        dsTick(dsTick:T(i).sec))))
+        t:SetValue(g_TickVolumeMaxCnt, "VolumeMax", tostring(dsTick:V(i)).."        "..tostring(dsTick:T(i).hour..":"..tostring(dsTick:T(i).min)..":"..tostring(dsTick:T(i).sec)))
         t:SetValue(g_TickVolumeMaxCnt, "VolumeAver", tostring(math.floor(g_TickVolume/g_TickCntPerDay)))
+
       end  
       
       g_TickVolume = g_TickVolume + dsTick:V(i)
